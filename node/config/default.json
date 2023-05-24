@@ -1,6 +1,6 @@
 {
     "appSecret": "24d6ebc0c0641d95e1246072180023e4",
-    "pageAccessToken": "EAAJBE4Gd9VIBACyZCf0N30ufbt9Lf6HvRbZBoz85hBo8oyl3SVSnk1WieOX5fuYdpxawOdEihUs4OP3z9BNFZAmZB3DytiIpPop23NoKmYXvuCnInaBtNmHJcYuWkrtfLG5cruWCSy6fN93mMFSMH3qVIEUa89m2CtNzm23c3q0tTGBV4cjNhZBI4EJ2mzG6NFYoONF33XQZDZD",
+    "pageAccessToken": "EAAJBE4Gd9VIBAEA2SYuE7OQhpZCVtyXZCdim0xlioNFjoQkYMFCQBp1mZCZAGwtdV9XztPUk1ZAeM2oDSvb9yZAelbJ0heUVIOXdljRZBwaFW35nrhaRT0iYrK89nyfw8TdhPZAGuZCJZAP0niseqKSsCF8npizINnUQBwuw1J0DY4SuCznq0DOZBZBaA4dJz0KuJt7sjZAAt9jxK2QZDZD",
     "validationToken": "valToken",
-    "serverURL": ""
+    "serverURL": "https://f5e4-190-215-53-179.ngrok-free.app"
 }

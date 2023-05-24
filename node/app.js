@@ -83,8 +83,8 @@ app.get('/webhook', function(req, res) {
 app.post('/webhook', function (req, res) {
   var data = req.body;
 
-  // Make sure this is a page subscription
-  if (data.object == 'page') {
+  // Make sure this is a instagram subscription
+  if (data.object == 'instagram') {
     // Iterate over each entry
     // There may be multiple if batched
     data.entry.forEach(function(pageEntry) {
