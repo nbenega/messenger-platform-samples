@@ -230,6 +230,9 @@ function receivedMessage(event) {
   var appId = message.app_id;
   var metadata = message.metadata;
 
+  //var name = await getUserName(senderID);
+  console.log("Received message from user %s", name);
+
   // You may get a text or attachment but not both
   var messageText = message.text;
   var messageAttachments = message.attachments;
@@ -823,6 +826,33 @@ function callSendAPI(messageData) {
       }
     } else {
       console.error("Failed calling Send API", response.statusCode, response.statusMessage, body.error);
+    }
+  });  
+}
+
+/*
+ * Get the User Name. The User Id  goes in the URL. If successful, we'll 
+ * get the name of the user in a response 
+ *
+ */
+function getUserName(userId) {
+  request({
+    uri: 'https://graph.facebook.com/v16.0/'+userId,
+    qs: { fields: 'name',
+          access_token: PAGE_ACCESS_TOKEN },
+    method: 'GET'
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      console.log("Body response: %s", JSON.stringify(body));
+      var name = body.name;
+
+      if (name) {
+        console.log("Successfully get user name %s, from user id %d", 
+        name, userId);
+      }
+      return name;
+    } else {
+      console.error("Failed calling Get User Name", response.statusCode, response.statusMessage, body.error);
     }
   });  
 }
