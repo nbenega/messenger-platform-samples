@@ -18,6 +18,20 @@ const
   https = require('https'),  
   request = require('request');
 
+
+/*
+ * Be sure to setup your config values before running this code. You can 
+ * set them using environment variables or modifying the config file in /config.
+ *
+ */
+
+// App Secret can be retrieved from the App Dashboard
+const URL_CHAT = (process.env.URL_CHAT) ? 
+  process.env.URL_CHAT :
+  config.get('urlChat');
+
+var mappingSesion={};
+
 var app = express();
 app.set('port', process.env.PORT || 5000);
 app.set('view engine', 'ejs');
@@ -90,24 +104,17 @@ app.post('/webhook', function (req, res) {
     data.entry.forEach(function(pageEntry) {
       var pageID = pageEntry.id;
       var timeOfEvent = pageEntry.time;
-
+      var sender;
+      var session;
       // Iterate over each messaging event
       pageEntry.messaging.forEach(function(messagingEvent) {
-        if (messagingEvent.optin) {
-          receivedAuthentication(messagingEvent);
-        } else if (messagingEvent.message) {
-          receivedMessage(messagingEvent);
-        } else if (messagingEvent.delivery) {
-          receivedDeliveryConfirmation(messagingEvent);
-        } else if (messagingEvent.postback) {
-          receivedPostback(messagingEvent);
-        } else if (messagingEvent.read) {
-          receivedMessageRead(messagingEvent);
-        } else if (messagingEvent.account_linking) {
-          receivedAccountLink(messagingEvent);
-        } else {
-          console.log("Webhook received unknown messagingEvent: ", messagingEvent);
-        }
+          sender = mappingSesion[messagingEvent.sender.Id];
+          if (sender){
+            session = sender.session;
+          } else {
+            console.log("Entra al entry");
+            getUserName(messagingEvent);
+          }
       });
     });
 
@@ -217,6 +224,7 @@ function receivedAuthentication(event) {
  */
 function receivedMessage(event) {
   var senderID = event.sender.id;
+  var senderName = event.sender.name;
   var recipientID = event.recipient.id;
   var timeOfMessage = event.timestamp;
   var message = event.message;
@@ -230,15 +238,14 @@ function receivedMessage(event) {
   var appId = message.app_id;
   var metadata = message.metadata;
 
-  //var name = await getUserName(senderID);
-  console.log("Received message from user %s", name);
-
   // You may get a text or attachment but not both
   var messageText = message.text;
   var messageAttachments = message.attachments;
   var quickReply = message.quick_reply;
 
-  if (isEcho) {
+  createSFSession(event);
+
+/*  if (isEcho) {
     // Just logging message echoes to console
     console.log("Received echo for message %s and app %d with metadata %s", 
       messageId, appId, metadata);
@@ -315,7 +322,7 @@ function receivedMessage(event) {
     }
   } else if (messageAttachments) {
     sendTextMessage(senderID, "Message with attachment received");
-  }
+  }*/
 }
 
 
@@ -835,27 +842,47 @@ function callSendAPI(messageData) {
  * get the name of the user in a response 
  *
  */
-function getUserName(userId) {
+function getUserName(event) {
+  var senderID = event.sender.id;
   request({
-    uri: 'https://graph.facebook.com/v16.0/'+userId,
+    uri: 'https://graph.facebook.com/v16.0/'+senderID,
     qs: { fields: 'name',
           access_token: PAGE_ACCESS_TOKEN },
     method: 'GET'
-  }, function (error, response, body) {
-    if (!error && response.statusCode == 200) {
-      console.log("Body response: %s", JSON.stringify(body));
-      var name = body.name;
-
-      if (name) {
-        console.log("Successfully get user name %s, from user id %d", 
-        name, userId);
+  }, function (event){
+    return function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        let name = JSON.parse(body).name;
+        if (name) {
+          var session={};
+          session.name = name;
+          mappingSesion[senderID] = session;
+          createSFSession(event);
+        }
+      } else {
+        console.error("Failed calling Get User Name", response.statusCode, response.statusMessage, body.error);
       }
-      return name;
-    } else {
-      console.error("Failed calling Get User Name", response.statusCode, response.statusMessage, body.error);
-    }
-  });  
+    };
+  }(event));  
 }
+
+/*event.sender.name = name;
+        if (event.optin) {
+          receivedAuthentication(event);
+        } else if (event.message) {
+          receivedMessage(event);
+        } else if (event.delivery) {
+          receivedDeliveryConfirmation(event);
+        } else if (event.postback) {
+          receivedPostback(event);
+        } else if (event.read) {
+          receivedMessageRead(event);
+        } else if (event.account_linking) {
+          receivedAccountLink(event);
+        } else {
+          console.log("Webhook received unknown event: ", event);
+        }
+*/
 
 // Start server
 // Webhooks must be available via SSL with a certificate signed by a valid 
@@ -865,4 +892,49 @@ app.listen(app.get('port'), function() {
 });
 
 module.exports = app;
+
+
+//Metodos para Salesforce
+
+const CREATE_SESSION = '/chat/rest/System/SessionId';
+
+
+/*
+ * Get the User Name. The User Id  goes in the URL. If successful, we'll 
+ * get the name of the user in a response 
+ *
+ */
+function createSFSession(event) {
+  console.log("event: %s", event);
+  request({
+    uri: URL_CHAT+CREATE_SESSION,
+    headers: {"X-LIVEAGENT-API-VERSION": 34,
+              "X-LIVEAGENT-AFFINITY": null },
+    method: 'GET'
+  }, function (event){
+    return function (error, response, body) {
+      if (!error && response.statusCode == 200) {
+        console.log("Sesión creada exitosamente, body: %s", body);
+
+        console.log('mappingSession: %s', JSON.stringify(mappingSesion));
+        console.log('event.sender.Id: %s', event.sender.Id);
+
+        var session = mappingSesion[event.sender.Id];
+        
+        console.log('mappingSesion[event.sender.Id]: %s', mappingSesion[event.sender.Id]);
+        console.log('session: %s', session);
+        if(session){
+          session.sessionKey = JSON.parse(body).key;
+          session.affinityToken = JSON.parse(body).affinityToken;
+          session.sessionId = JSON.parse(body).id;
+
+          console.log('mappingSession: %s', mappingSesion);
+        }
+        
+      } else {
+        console.error("Failed calling Get User Name", response.statusCode, response.statusMessage, body.error);
+      }
+    };
+  }(event));
+}
 
