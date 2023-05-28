@@ -17,6 +17,9 @@ const
   express = require('express'),
   https = require('https'),  
   request = require('request');
+  fetch = require('node-fetch');
+
+  
 
 
 /*
@@ -94,7 +97,7 @@ app.get('/webhook', function(req, res) {
  * https://developers.facebook.com/docs/messenger-platform/product-overview/setup#subscribe_app
  *
  */
-app.post('/webhook', function (req, res) {
+app.post('/webhook1', function (req, res) {
   var data = req.body;
 
   // Make sure this is a instagram subscription
@@ -114,6 +117,7 @@ app.post('/webhook', function (req, res) {
           } else {
             console.log("Entra al entry");
             getUserName(messagingEvent);
+            console.log("desp del name");
           }
       });
     });
@@ -126,6 +130,39 @@ app.post('/webhook', function (req, res) {
   }
 });
 
+
+app.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
+  var data = req.body;
+
+  // Make sure this is a instagram subscription
+  if (data.object == 'instagram') {
+    // Iterate over each entry
+    // There may be multiple if batched
+    data.entry.forEach(async function(pageEntry) { // <-- Nota el 'async' aquí
+      var pageID = pageEntry.id;
+      var timeOfEvent = pageEntry.time;
+      var sender;
+      var session;
+      // Iterate over each messaging event
+      pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
+          sender = mappingSesion[messagingEvent.sender.Id];
+          if (sender){
+            session = sender.session;
+          } else {
+            console.log("Entra al entry");
+            await getUserName(messagingEvent); // <-- Nota el 'await' aquí
+            console.log("desp del name");
+          }
+      });
+    });
+
+    // Assume all went well.
+    //
+    // You must send back a 200, within 20 seconds, to let us know you've 
+    // successfully received the callback. Otherwise, the request will time out.
+    res.sendStatus(200);
+  }
+});
 /*
  * This path is used for account linking. The account linking call-to-action
  * (sendAccountLinking) is pointed to this URL. 
@@ -842,7 +879,7 @@ function callSendAPI(messageData) {
  * get the name of the user in a response 
  *
  */
-function getUserName(event) {
+function getUserName1(event) {
   var senderID = event.sender.id;
   request({
     uri: 'https://graph.facebook.com/v16.0/'+senderID,
@@ -865,6 +902,30 @@ function getUserName(event) {
       }
     };
   }(event));  
+}
+
+
+async function getUserName(event) {
+  var senderID = event.sender.id;
+  try {
+    let response = await fetch(`https://graph.facebook.com/v16.0/${senderID}?fields=name,username&access_token=${PAGE_ACCESS_TOKEN}`);
+    if (response.ok) {
+      let body = await response.json();
+      let name = body.name;
+      console.log(body);
+      if (name) {
+        var session = {};
+        session.name = name;
+        mappingSesion[senderID] = session;
+        await createSFSession(event);
+        console.log("fin");
+      }
+    } else {
+      console.error("Failed calling Get User Name", response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+  }
 }
 
 /*event.sender.name = name;
@@ -905,7 +966,7 @@ const CREATE_SESSION = '/chat/rest/System/SessionId';
  * get the name of the user in a response 
  *
  */
-function createSFSession(event) {
+function createSFSession1(event) {
   console.log("event: %s", event);
   request({
     uri: URL_CHAT+CREATE_SESSION,
@@ -938,5 +999,41 @@ function createSFSession(event) {
       }
     };
   }(event));
+}
+async function createSFSession(event) {
+  console.log("event: %s", event);
+  try {
+    const response = await fetch(URL_CHAT+CREATE_SESSION, {
+      headers: {
+        "X-LIVEAGENT-API-VERSION": 34,
+        "X-LIVEAGENT-AFFINITY": null
+      }
+    });
+
+    if (response.ok) {
+      const body = await response.json();
+      console.log("Sesión creada exitosamente, body: %s", body);
+
+      console.log('mappingSession: %s', JSON.stringify(mappingSesion));
+      console.log('event.sender.Id: %s', event.sender.Id);
+
+      var session = mappingSesion[event.sender.Id];
+      
+      console.log('mappingSesion[event.sender.Id]: %s', mappingSesion[event.sender.Id]);
+      console.log('session: %s', session);
+      if(session){
+        session.sessionKey = body.key;
+        session.affinityToken = body.affinityToken;
+        session.sessionId = body.id;
+
+        console.log('mappingSession: %s', mappingSesion);
+      }
+    } else {
+      console.log(response);
+      console.error("Failed calling createSFSession", response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+  }
 }
 
