@@ -1,6 +1,4 @@
 # General
-messenger-platform-samples/node/config/default.json
-messenger-platform-samples/node/config
 .DS_Store
 
 Procfile
@@ -41,3 +39,4 @@ package-lock.json
 # config
 
 node\config\default.json
+node/config/default.json
