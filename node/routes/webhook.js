@@ -3,9 +3,16 @@ const express = require("express");
 const router = express.Router();
 const PAGE_ACCESS_TOKEN = process.env.MESSENGER_PAGE_ACCESS_TOKEN || config.get('pageAccessToken');
 const URL_CHAT = process.env.URL_CHAT || config.get('urlChat');
+const ORG_ID = process.env.ORG_ID || config.get('orgId');
+const DEPLOYMENT_ID = process.env.DEPLOYMENT_ID || config.get('deploymentId');
+const BUTTON_ID = process.env.BUTTON_ID || config.get('buttonId');
+const USER_AGENT = process.env.USER_AGENT || config.get('userAgent');
+const LANGUAGE = process.env.LANGUAGE || config.get('language');
+const SCREEN_RESOLUTION = process.env.SCREEN_RESOLUTION || config.get('screenResolution');
 const CREATE_SESSION = '/chat/rest/System/SessionId';
 const CREATE_VISITOR_SESSION = '/chat/rest/Chasitor/ChasitorInit';
-let mappingSesion = {};
+
+const WebhookController = require('../controllers/WebhookController');
 
 
 /*
@@ -70,16 +77,16 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
         // Iterate over each messaging event
         pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
           senderID = messagingEvent.sender.id;  
-          session = mappingSesion[senderID];
+          session = WebhookController.mappingSesion[senderID];
             if (session){
               
             } else {
               console.log("Entra al entry");
-              await getUserName(senderID);
-              console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
+              await WebhookController.getUserName(senderID);
+              console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
               await createSFSession(); 
-              console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
-              await createSFVisitorSession();
+              console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
+              await createSFVisitorSession(senderID);
               console.log("desp del name");
             }
         });
@@ -94,31 +101,7 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
   });
     
 
-/*
- * Get the User Name. The User Id  goes in the URL. If successful, we'll 
- * get the name of the user in a response 
- *
- */
-async function getUserName(senderID) {
-  try {
-    let response = await fetch(`https://graph.facebook.com/v16.0/${senderID}?fields=name,username&access_token=${PAGE_ACCESS_TOKEN}`);
-    if (response.ok) {
-      let body = await response.json();
-      let name = body.name;
-      console.log(body);
-      if (name) {
-        var session = {};
-        session.name = name;
-        mappingSesion[senderID] = session;
-        console.log("fin");
-      }
-    } else {
-      console.error("Failed calling Get User Name", response.status, response.statusText);
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  }
-}
+
 
 /*
  * Create a Salesforce Chat Session. If successful, we'll 
@@ -138,9 +121,9 @@ async function createSFSession(senderID) {
       const body = await response.json();
       console.log("Sesión creada exitosamente, body: %s", body);
 
-      var session = mappingSesion[senderID];
+      var session = WebhookController.mappingSesion[senderID];
       
-      console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
+      console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
       console.log('session: %s', session);
       if(session){
         session.sessionKey = body.key;
@@ -148,7 +131,7 @@ async function createSFSession(senderID) {
         session.sessionId = body.id;
         session.sequence = 1;
 
-        console.log('mappingSession: %s', mappingSesion);
+        console.log('mappingSession: %s', WebhookController.mappingSesion);
       }
     } else {
       console.log(response);
@@ -165,7 +148,7 @@ async function createSFSession(senderID) {
  *
  */
 async function createSFVisitorSession(senderID) {
-  var session = mappingSesion[senderID];
+  var session = WebhookController.mappingSesion[senderID];
   var data = {
     "organizationId": ORG_ID, 
     "deploymentId": DEPLOYMENT_ID, 
