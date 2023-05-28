@@ -4,6 +4,7 @@ const router = express.Router();
 const PAGE_ACCESS_TOKEN = process.env.MESSENGER_PAGE_ACCESS_TOKEN || config.get('pageAccessToken');
 const URL_CHAT = process.env.URL_CHAT || config.get('urlChat');
 const CREATE_SESSION = '/chat/rest/System/SessionId';
+const CREATE_VISITOR_SESSION = '/chat/rest/Chasitor/ChasitorInit';
 let mappingSesion = {};
 
 
@@ -65,14 +66,20 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
       data.entry.forEach(async function(pageEntry) { // <-- Nota el 'async' aquí
         var sender;
         var session;
+        var senderID;
         // Iterate over each messaging event
         pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
-            sender = mappingSesion[messagingEvent.sender.Id];
-            if (sender){
-              session = sender.session;
+          senderID = messagingEvent.sender.id;  
+          session = mappingSesion[senderID];
+            if (session){
+              
             } else {
               console.log("Entra al entry");
-              await getUserName(messagingEvent); // <-- Nota el 'await' aquí
+              await getUserName(senderID);
+              console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
+              await createSFSession(); 
+              console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
+              await createSFVisitorSession();
               console.log("desp del name");
             }
         });
@@ -87,74 +94,116 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
   });
     
 
-
-async function getUserName(event) {
-    var senderID = event.sender.id;
-    try {
-      let response = await fetch(`https://graph.facebook.com/v16.0/${senderID}?fields=name,username&access_token=${PAGE_ACCESS_TOKEN}`);
-      if (response.ok) {
-        let body = await response.json();
-        let name = body.name;
-        console.log(body);
-        if (name) {
-          var session = {};
-          session.name = name;
-          mappingSesion[senderID] = session;
-          await createSFSession(event);
-          console.log("fin");
-        }
-      } else {
-        console.error("Failed calling Get User Name", response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  }
-  
-
 /*
  * Get the User Name. The User Id  goes in the URL. If successful, we'll 
  * get the name of the user in a response 
  *
  */
-async function createSFSession(event) {
-    console.log("event: %s", event);
-    try {
-      const response = await fetch(URL_CHAT+CREATE_SESSION, {
-        headers: {
-          "X-LIVEAGENT-API-VERSION": 34,
-          "X-LIVEAGENT-AFFINITY": null
-        }
-      });
-  
-      if (response.ok) {
-        const body = await response.json();
-        console.log("Sesión creada exitosamente, body: %s", body);
-  
-        console.log('mappingSession: %s', JSON.stringify(mappingSesion));
-        console.log('event.sender.Id: %s', event.sender.Id);
-  
-        var session = mappingSesion[event.sender.Id];
-        
-        console.log('mappingSesion[event.sender.Id]: %s', mappingSesion[event.sender.Id]);
-        console.log('session: %s', session);
-        if(session){
-          session.sessionKey = body.key;
-          session.affinityToken = body.affinityToken;
-          session.sessionId = body.id;
-  
-          console.log('mappingSession: %s', mappingSesion);
-        }
-      } else {
-        console.log(response);
-        console.error("Failed calling createSFSession", response.status, response.statusText);
+async function getUserName(senderID) {
+  try {
+    let response = await fetch(`https://graph.facebook.com/v16.0/${senderID}?fields=name,username&access_token=${PAGE_ACCESS_TOKEN}`);
+    if (response.ok) {
+      let body = await response.json();
+      let name = body.name;
+      console.log(body);
+      if (name) {
+        var session = {};
+        session.name = name;
+        mappingSesion[senderID] = session;
+        console.log("fin");
       }
-    } catch (error) {
-      console.error("Error:", error);
+    } else {
+      console.error("Failed calling Get User Name", response.status, response.statusText);
     }
+  } catch (error) {
+    console.error("Error:", error);
   }
-  
-  
+}
+
+/*
+ * Create a Salesforce Chat Session. If successful, we'll 
+ * get the session metadata 
+ *
+ */
+async function createSFSession(senderID) {
+  try {
+    const response = await fetch(URL_CHAT+CREATE_SESSION, {
+      headers: {
+        "X-LIVEAGENT-API-VERSION": 34,
+        "X-LIVEAGENT-AFFINITY": null
+      }
+    });
+
+    if (response.ok) {
+      const body = await response.json();
+      console.log("Sesión creada exitosamente, body: %s", body);
+
+      var session = mappingSesion[senderID];
+      
+      console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
+      console.log('session: %s', session);
+      if(session){
+        session.sessionKey = body.key;
+        session.affinityToken = body.affinityToken;
+        session.sessionId = body.id;
+        session.sequence = 1;
+
+        console.log('mappingSession: %s', mappingSesion);
+      }
+    } else {
+      console.log(response);
+      console.error("Failed calling createSFSession", response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+/*
+ * Create a Salesforce Chat Visitor Session. If successful, we'll 
+ * get the session metadata 
+ *
+ */
+async function createSFVisitorSession(senderID) {
+  var session = mappingSesion[senderID];
+  var data = {
+    "organizationId": ORG_ID, 
+    "deploymentId": DEPLOYMENT_ID, 
+    "buttonId": BUTTON_ID, 
+    "sessionId": session.sessionId, 
+    "userAgent": USER_AGENT, 
+    "language": LANGUAGE, 
+    "screenResolution": SCREEN_RESOLUTION, 
+    "visitorName": session.name, 
+    "prechatDetails": [],  
+    "prechatEntities": [], 
+    "receiveQueueUpdates": true, 
+    "isPost": true 
+  };
+
+  try {
+    const response = await fetch(URL_CHAT+CREATE_VISITOR_SESSION, {
+      method: 'POST',
+      headers: {
+        "X-LIVEAGENT-API-VERSION": 34,
+        "X-LIVEAGENT-AFFINITY": session.affinityToken,
+        "X-LIVEAGENT-SESSION-KEY": session.sessionKey,
+        "X-LIVEAGENT-SEQUENCE": session.sequence
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (response.ok) {
+      const body = await response.json();
+      console.log("Sesión creada exitosamente, body: %s", body);
+    } else {
+      console.log(response);
+      console.error("Failed calling createSFSession", response.status, response.statusText);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
 
 
 /*
