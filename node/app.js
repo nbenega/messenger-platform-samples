@@ -33,7 +33,7 @@ const URL_CHAT = (process.env.URL_CHAT) ?
 var mappingSesion={};
 
 var app = express();
-app.set('port', process.env.PORT || 5000);
+app.set('port', process.env.PORT || 3000);
 app.set('view engine', 'ejs');
 app.use(bodyParser.json({ verify: verifyRequestSignature }));
 app.use(express.static('public'));
@@ -846,13 +846,14 @@ function getUserName(event) {
   var senderID = event.sender.id;
   request({
     uri: 'https://graph.facebook.com/v16.0/'+senderID,
-    qs: { fields: 'name',
+    qs: { fields: 'name,username',
           access_token: PAGE_ACCESS_TOKEN },
     method: 'GET'
   }, function (event){
     return function (error, response, body) {
       if (!error && response.statusCode == 200) {
         let name = JSON.parse(body).name;
+        console.log(body);
         if (name) {
           var session={};
           session.name = name;
@@ -932,7 +933,8 @@ function createSFSession(event) {
         }
         
       } else {
-        console.error("Failed calling Get User Name", response.statusCode, response.statusMessage, body.error);
+        console.log(response);
+        console.error("Failed calling createSFSession", response.statusCode, response.statusMessage, body.error);
       }
     };
   }(event));

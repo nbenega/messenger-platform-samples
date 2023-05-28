@@ -1,0 +1,17 @@
+{
+    "appSecret": "-",
+    "pageAccessToken": "-",
+    "validationToken": "valToken",
+    "serverURL": "https://fcff-186-132-216-114.ngrok-free.app",
+    "urlChat" :"https://d.la4-c1-ia5.salesforceliveagent.com",
+    "SessionKey": "-",
+    "SessionId": "-",
+    "AffinityToken": "c2262388",
+    "Sequence": "1",
+    "OrgId": "-",
+    "DeploymentId": "-",
+    "ButtonId": "-",
+    "UserAgent": "Lynx/2.8.8",
+    "Language": "en-US",
+    "ScreenResolution": "1900x1080"
+}

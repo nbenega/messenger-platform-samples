@@ -38,3 +38,4 @@ package-lock.json
 
 # config
 node\config\default.json
+messenger-platform-samples/node/config/default.json
