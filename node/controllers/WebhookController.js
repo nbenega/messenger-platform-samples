@@ -1,7 +1,5 @@
 const fetch = require("node-fetch"); // Asegúrate de requerir cualquier módulo necesario
-const config = require('config');
-const PAGE_ACCESS_TOKEN = process.env.MESSENGER_PAGE_ACCESS_TOKEN || config.get('pageAccessToken');
-let mappingSesion = {};
+const { PAGE_ACCESS_TOKEN,mappingSesion} = require('../global/Variables');
 
 /*
  * Get the User Name. The User Id  goes in the URL. If successful, we'll 
@@ -29,4 +27,4 @@ async function getUserName(senderID) {
     }
   }
   
-  module.exports = { getUserName,mappingSesion };
+  module.exports = { getUserName };

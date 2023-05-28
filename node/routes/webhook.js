@@ -1,18 +1,8 @@
-const config = require('config');
 const express = require("express");
 const router = express.Router();
-const PAGE_ACCESS_TOKEN = process.env.MESSENGER_PAGE_ACCESS_TOKEN || config.get('pageAccessToken');
-const URL_CHAT = process.env.URL_CHAT || config.get('urlChat');
-const ORG_ID = process.env.ORG_ID || config.get('orgId');
-const DEPLOYMENT_ID = process.env.DEPLOYMENT_ID || config.get('deploymentId');
-const BUTTON_ID = process.env.BUTTON_ID || config.get('buttonId');
-const USER_AGENT = process.env.USER_AGENT || config.get('userAgent');
-const LANGUAGE = process.env.LANGUAGE || config.get('language');
-const SCREEN_RESOLUTION = process.env.SCREEN_RESOLUTION || config.get('screenResolution');
-const CREATE_SESSION = '/chat/rest/System/SessionId';
-const CREATE_VISITOR_SESSION = '/chat/rest/Chasitor/ChasitorInit';
-
 const WebhookController = require('../controllers/WebhookController');
+const SalesforceController = require('../controllers/WebhookController');
+const { VALIDATION_TOKEN,PAGE_ACCESS_TOKEN} = require('../global/Variables');
 
 
 /*
@@ -84,9 +74,9 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
               console.log("Entra al entry");
               await WebhookController.getUserName(senderID);
               console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
-              await createSFSession(); 
+              await SalesforceController.createSFSession(); 
               console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
-              await createSFVisitorSession(senderID);
+              await SalesforceController.createSFVisitorSession(senderID);
               console.log("desp del name");
             }
         });
@@ -100,94 +90,6 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
     }
   });
     
-
-
-
-/*
- * Create a Salesforce Chat Session. If successful, we'll 
- * get the session metadata 
- *
- */
-async function createSFSession(senderID) {
-  try {
-    const response = await fetch(URL_CHAT+CREATE_SESSION, {
-      headers: {
-        "X-LIVEAGENT-API-VERSION": 34,
-        "X-LIVEAGENT-AFFINITY": null
-      }
-    });
-
-    if (response.ok) {
-      const body = await response.json();
-      console.log("Sesión creada exitosamente, body: %s", body);
-
-      var session = WebhookController.mappingSesion[senderID];
-      
-      console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
-      console.log('session: %s', session);
-      if(session){
-        session.sessionKey = body.key;
-        session.affinityToken = body.affinityToken;
-        session.sessionId = body.id;
-        session.sequence = 1;
-
-        console.log('mappingSession: %s', WebhookController.mappingSesion);
-      }
-    } else {
-      console.log(response);
-      console.error("Failed calling createSFSession", response.status, response.statusText);
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  }
-}
-
-/*
- * Create a Salesforce Chat Visitor Session. If successful, we'll 
- * get the session metadata 
- *
- */
-async function createSFVisitorSession(senderID) {
-  var session = WebhookController.mappingSesion[senderID];
-  var data = {
-    "organizationId": ORG_ID, 
-    "deploymentId": DEPLOYMENT_ID, 
-    "buttonId": BUTTON_ID, 
-    "sessionId": session.sessionId, 
-    "userAgent": USER_AGENT, 
-    "language": LANGUAGE, 
-    "screenResolution": SCREEN_RESOLUTION, 
-    "visitorName": session.name, 
-    "prechatDetails": [],  
-    "prechatEntities": [], 
-    "receiveQueueUpdates": true, 
-    "isPost": true 
-  };
-
-  try {
-    const response = await fetch(URL_CHAT+CREATE_VISITOR_SESSION, {
-      method: 'POST',
-      headers: {
-        "X-LIVEAGENT-API-VERSION": 34,
-        "X-LIVEAGENT-AFFINITY": session.affinityToken,
-        "X-LIVEAGENT-SESSION-KEY": session.sessionKey,
-        "X-LIVEAGENT-SEQUENCE": session.sequence
-      },
-      body: JSON.stringify(data)
-    });
-
-    if (response.ok) {
-      const body = await response.json();
-      console.log("Sesión creada exitosamente, body: %s", body);
-    } else {
-      console.log(response);
-      console.error("Failed calling createSFSession", response.status, response.statusText);
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  }
-}
-
 
 /*
  * Call the Send API. The message data goes in the body. If successful, we'll 
