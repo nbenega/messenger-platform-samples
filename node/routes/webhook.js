@@ -20,7 +20,7 @@ router.get('/webhook', function(req, res) {
       res.sendStatus(403);          
     }  
   });
-  
+
 
 /*
  * This path is used for account linking. The account linking call-to-action
@@ -68,17 +68,18 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
         pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
           senderID = messagingEvent.sender.id;  
           session = WebhookController.mappingSesion[senderID];
-            if (session){
-              
-            } else {
-              console.log("Entra al entry");
-              await WebhookController.getUserName(senderID);
-              console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
-              await SalesforceController.createSFSession(); 
-              console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
-              await SalesforceController.createSFVisitorSession(senderID);
-              console.log("desp del name");
-            }
+          if (session){
+            
+          } else {
+            console.log("Entra al entry");
+            await WebhookController.getUserName(senderID);
+            console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
+            await SalesforceController.createSFSession(senderID); 
+            console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
+            await SalesforceController.createSFVisitorSession(senderID);
+            console.log("desp del name");
+          }
+          SalesforceController.getSFMessages(senderID);
         });
       });
   
