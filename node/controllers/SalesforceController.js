@@ -1,5 +1,5 @@
 const fetch = require("node-fetch"); // Asegúrate de requerir cualquier módulo necesario
-const { URL_CHAT,ORG_ID,DEPLOYMENT_ID,BUTTON_ID,USER_AGENT,LANGUAGE,SCREEN_RESOLUTION,CREATE_SESSION,CREATE_VISITOR_SESSION,mappingSesion} = require('../global/Variables');
+const { URL_CHAT,ORG_ID,DEPLOYMENT_ID,BUTTON_ID,USER_AGENT,LANGUAGE,SCREEN_RESOLUTION,CREATE_SESSION,CREATE_VISITOR_SESSION,CHAT_MESSAGE,mappingSesion} = require('../global/Variables');
 
 
 /*
@@ -76,7 +76,7 @@ async function createSFSession(senderID) {
       });
   
       if (response.ok) {
-        const body = await response.json();
+        const body = await response;
         console.log("Sesión creada exitosamente, body: %s", body);
       } else {
         console.log(response);
@@ -87,4 +87,38 @@ async function createSFSession(senderID) {
     }
   }
   
-  module.exports = { createSFSession,createSFVisitorSession };
+  /*
+   * Create a Salesforce Chat Visitor Session. If successful, we'll 
+   * get the session metadata 
+   *
+   */
+  async function chatMessage(event) {
+    var session = mappingSesion[event.sender.id];
+    var data = {
+      "text": event.message.text,
+    };
+  
+    try {
+      const response = await fetch(URL_CHAT+CHAT_MESSAGE, {
+        method: 'POST',
+        headers: {
+          "X-LIVEAGENT-API-VERSION": 34,
+          "X-LIVEAGENT-AFFINITY": session.affinityToken,
+          "X-LIVEAGENT-SESSION-KEY": session.sessionKey
+        },
+        body: JSON.stringify(data)
+      });
+  
+      if (response.ok) {
+        const body = await response;
+        console.log("Mensaje enviado correctamente, body: %s", body);
+      } else {
+        console.log(response);
+        console.error("Failed calling chatMessage", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  }
+
+  module.exports = { createSFSession,createSFVisitorSession,chatMessage };
