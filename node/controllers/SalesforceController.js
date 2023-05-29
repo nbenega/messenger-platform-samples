@@ -1,5 +1,6 @@
 const fetch = require("node-fetch"); // Asegúrate de requerir cualquier módulo necesario
-const { PAGE_ACCESS_TOKEN,URL_CHAT,ORG_ID,DEPLOYMENT_ID,BUTTON_ID,USER_AGENT,LANGUAGE,SCREEN_RESOLUTION,CREATE_SESSION,CREATE_VISITOR_SESSION,CHAT_MESSAGE,MESSAGES,mappingSesion} = require('../global/Variables');
+const { PAGE_ACCESS_TOKEN,URL_CHAT,ORG_ID,DEPLOYMENT_ID,BUTTON_ID,USER_AGENT,LANGUAGE,SCREEN_RESOLUTION,CREATE_SESSION,CREATE_VISITOR_SESSION,CHAT_MESSAGE,MESSAGES,PAGE_ID,mappingSesion} = require('../global/Variables');
+const { log } = require("console");
 
 
 /*
@@ -145,28 +146,17 @@ async function getSFMessages(senderID) {
 
         body.messages.forEach(async function(message) {
             switch (message.type) {
-                case 'ChatRequestSuccess':
-                    break;
-
-                case 'QueueUpdate':
-                    break;
-
-                case 'ChatEstablished':
-                    break;
-
-                case 'AgentTyping':
-                    break;
-                        
                 case 'ChatMessage':
-                    sendIGMessage(message,senderID);
+                    console.log("Message recibido: %s", message);
+                    await sendIGMessage(message,senderID);
+                    getSFMessages(senderID);
                     break;
-                        
-                case 'AgentNotTyping':
-                    break;
-                    
                 case 'ChatEnded':
+                    console.log("Message recibido: %s", message);
                     break;
-                
+                default:
+                  console.log("Message recibido: %s", message);
+                  getSFMessages(senderID);
             }
         });
       } else {
@@ -189,7 +179,7 @@ async function sendIGMessage(message, senderID) {
     };
     
     try {
-      const response = await fetch(URL_CHAT+MESSAGES, {
+      const response = await fetch(`https://graph.facebook.com/v16.0/${PAGE_ID}`, {
         method: 'POST',
         qs: {
             recipient: {id: senderID},
