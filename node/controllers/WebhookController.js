@@ -12,12 +12,10 @@ async function getUserName(senderID) {
       if (response.ok) {
         let body = await response.json();
         let name = body.name;
-        console.log(body);
         if (name) {
           var session = {};
           session.name = name;
           mappingSesion[senderID] = session;
-          console.log("fin");
         }
       } else {
         console.error("Failed calling Get User Name", response.status, response.statusText);

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const WebhookController = require('../controllers/WebhookController');
 const SalesforceController = require('../controllers/SalesforceController');
-const { VALIDATION_TOKEN,PAGE_ACCESS_TOKEN,mappingSesion} = require('../global/Variables');
+const { VALIDATION_TOKEN,PAGE_ACCESS_TOKEN,IG_ACCOUNT_ID,mappingSesion} = require('../global/Variables');
 
 
 /*
@@ -61,28 +61,29 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
       // Iterate over each entry
       // There may be multiple if batched
       data.entry.forEach(async function(pageEntry) { // <-- Nota el 'async' aquí
-        var sender;
         var session;
         var senderID;
         // Iterate over each messaging event
         pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
           senderID = messagingEvent.sender.id;  
-          session = mappingSesion[senderID];
-          if (session){
+          if(senderID != IG_ACCOUNT_ID){
+            session = mappingSesion[senderID];
+            if (session){
+              console.log("Envía nuevo mensaje");
               await SalesforceController.chatMessage(messagingEvent);
-          } else {
-            console.log("Entra al entry");
-            await WebhookController.getUserName(senderID);
-            console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
-            await SalesforceController.createSFSession(senderID); 
-            console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
-            await SalesforceController.createSFVisitorSession(senderID);
-            console.log("desp del name");
-            await SalesforceController.chatMessage(messagingEvent);
+            } else {
+              console.log("Obtiene IG user name");
+              await WebhookController.getUserName(senderID);
+              console.log("Crea sesión de chat");
+              await SalesforceController.createSFSession(senderID); 
+              console.log("Crea sesión de visitante");
+              await SalesforceController.createSFVisitorSession(senderID);
+              console.log("Envía primer mensaje");
+              await SalesforceController.chatMessage(messagingEvent);
+              console.log("Empieza a escuchar novedades");
+              SalesforceController.getSFMessages(senderID);
+            }
           }
-          setTimeout(() => {
-            SalesforceController.getSFMessages(senderID);
-        }, 10000); // Esperar 10000 milisegundos (10 segundos) antes de llamar a getSFMessages
         });
       });
   

@@ -1,7 +1,6 @@
 const fetch = require("node-fetch"); // Asegúrate de requerir cualquier módulo necesario
 const { PAGE_ACCESS_TOKEN,URL_CHAT,ORG_ID,DEPLOYMENT_ID,BUTTON_ID,USER_AGENT,LANGUAGE,SCREEN_RESOLUTION,CREATE_SESSION,CREATE_VISITOR_SESSION,CHAT_MESSAGE,MESSAGES,PAGE_ID,mappingSesion} = require('../global/Variables');
-const { log } = require("console");
-const request = require('request');
+const SERVER_UNAVAILABLE = 503;
 
 
 /*
@@ -20,24 +19,20 @@ async function createSFSession(senderID) {
   
       if (response.ok) {
         const body = await response.json();
-        console.log("Sesión creada exitosamente, body: %s", body);
+        console.log("Sesión de chat creada exitosamente");
   
         var session = mappingSesion[senderID];
-        
-        console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
-        console.log('session: %s', session);
         if(session){
           session.sessionKey = body.key;
           session.affinityToken = body.affinityToken;
           session.sessionId = body.id;
           session.clientPollTimeout = body.clientPollTimeout;
           session.sequence = 1;
-  
-          console.log('mappingSession: %s', mappingSesion);
+          session.offset = -1;
         }
       } else {
-        console.log(response);
         console.error("Failed calling createSFSession", response.status, response.statusText);
+        console.log(response);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -79,11 +74,10 @@ async function createSFSession(senderID) {
       });
   
       if (response.ok) {
-        const body = await response;
-        console.log("Sesión creada exitosamente, body: %s", body);
+        console.log("Sesión de visitante creada exitosamente");
       } else {
+        console.error("Failed calling createSFVisitorSession", response.status, response.statusText);
         console.log(response);
-        console.error("Failed calling createSFSession", response.status, response.statusText);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -105,28 +99,32 @@ async function createSFSession(senderID) {
       const response = await fetch(URL_CHAT+CHAT_MESSAGE, {
         method: 'POST',
         headers: {
+          "Content-Type": 'application/json',
+          "Accept": '*/*',
+          "Accept-Encoding": 'gzip, deflate, br',
+          "User-Agent": USER_AGENT,
+          "Connection": 'keep-alive',
           "X-LIVEAGENT-API-VERSION": 34,
           "X-LIVEAGENT-AFFINITY": session.affinityToken,
-          "X-LIVEAGENT-SESSION-KEY": session.sessionKey,
-          'Content-Type': 'application/json'
+          "X-LIVEAGENT-SESSION-KEY": session.sessionKey
         },
         body: JSON.stringify(data)
       });
   
       if (response.ok) {
         const body = await response;
-        console.log("Mensaje enviado correctamente, body: %s", body);
+        console.log("Mensaje enviado al agente correctamente");
       } else {
+        console.error("Failed calling chatMessage", response.status, response.statusText);
         console.log(response);
         console.log(JSON.stringify(response));
-        console.error("Failed calling chatMessage", response.status, response.statusText);
       }
     } catch (error) {
       console.error("Error:", error);
     }
   }
 
-  /*
+/*
  * Create a Salesforce Chat Session. If successful, we'll 
  * get the session metadata 
  *
@@ -134,37 +132,51 @@ async function createSFSession(senderID) {
 async function getSFMessages(senderID) {
     var session = mappingSesion[senderID];
 
+    var options = {
+      headers: {
+        "X-LIVEAGENT-API-VERSION": 34,
+        "X-LIVEAGENT-AFFINITY": session.affinityToken,
+        "X-LIVEAGENT-SESSION-KEY": session.sessionKey
+      },
+      qs: {
+        ack: session.offset
+      }
+    };
+
     try {
-      const response = await fetch(URL_CHAT+MESSAGES, {
-        headers: {
-          "X-LIVEAGENT-API-VERSION": 34,
-          "X-LIVEAGENT-AFFINITY": session.affinityToken,
-          "X-LIVEAGENT-SESSION-KEY": session.sessionKey,
-        }
-      });
+      const response = await fetch(URL_CHAT+MESSAGES, options);
   
       if (response.ok) {
         const body = await response.json();
-        console.log("Interaccion de salesforce recibida, body: %s", body);
-
+        if(body.sequence){
+          session.sequence = body.sequence;
+          session.offset = body.sequence;
+        }
         body.messages.forEach(async function(message) {
-            switch (message.type) {
-                case 'ChatMessage':
-                    console.log("Message recibido: %s", JSON.stringify(message));
-                    await sendIGMessage(message,senderID);
-                    getSFMessages(senderID);
-                    break;
-                case 'ChatEnded':
-                    console.log("Message recibido: %s", message);
-                    break;
-                default:
-                  console.log("Message recibido: %s", message);
-                  getSFMessages(senderID);
-            }
+          console.log("Message recibido: %s", message);
+          switch (message.type) {
+            case 'ChatMessage':
+              console.log("Message recibido: %s", JSON.stringify(message));
+              await sendIGMessage(message,senderID);
+              console.log("Vuelve a escuchar novedades");
+              await getSFMessages(senderID);
+              break;
+            case 'ChatEnded':
+              break;
+            case 'ChasitorSessionData':
+              //TODO: tiene que procesarse luego de un ReconnectSession request y no tiene que enviarse nada hasta que se procese este mensaje
+              break;
+            default:
+              console.log("Vuelve a escuchar novedades");
+              await getSFMessages(senderID);
+          }
         });
       } else {
-        console.log(response);
         console.error("Failed calling getSFMessages", response.status, response.statusText);
+        console.log(response);
+        if(response.status == SERVER_UNAVAILABLE){
+          //TODO: implementar el ReconnectSession y el ChasitorResyncState
+        }
       }
     } catch (error) {
       console.error("Error:", error);
@@ -178,35 +190,32 @@ async function getSFMessages(senderID) {
 
 async function sendIGMessage(message, senderID) {
   var data = {
-      recipient: {
-          id: senderID
-      },
-      message: {"text": message.message.text}
+    recipient: {
+        id: senderID
+    },
+    message: {"text": message.message.text}
   };
 
   var url = `https://graph.facebook.com/v16.0/${PAGE_ID}/messages?access_token=${PAGE_ACCESS_TOKEN}`;
 
   var options = {
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
   };
 
-  console.log("armado URL sendIGmessage: %s", JSON.stringify(options));
-
   try {
-      const response = await fetch(url, options);
-      if (response.ok) {
-          const body = await response.json();
-          console.log("Mensaje enviado exitosamente, body: %s", JSON.stringify(body));
-      } else {
-          console.log(response);
-          console.error("Failed calling sendIGMessage", response.status, response.statusText);
-      }
+    const response = await fetch(url, options);
+    if (response.ok) {
+      console.log("Mensaje enviado a IG exitosamente");
+    } else {
+      console.error("Failed calling sendIGMessage", response.status, response.statusText);
+      console.log(response);
+    }
   } catch (error) {
-      console.error("Error:", error);
+    console.error("Error:", error);
   }
 }
   

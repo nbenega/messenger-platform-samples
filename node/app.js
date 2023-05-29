@@ -26,10 +26,7 @@ const server = app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));
 });
 
-module.export = {
-    server,
-    PAGE_ACCESS_TOKEN
-  };
+module.export = server;
 
 
 /*
