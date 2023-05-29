@@ -80,7 +80,9 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
             console.log("desp del name");
             await SalesforceController.chatMessage(messagingEvent);
           }
-          SalesforceController.getSFMessages(senderID);
+          setTimeout(() => {
+            SalesforceController.getSFMessages(senderID);
+        }, 10000); // Esperar 5000 milisegundos (5 segundos) antes de llamar a getSFMessages
         });
       });
   

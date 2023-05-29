@@ -141,7 +141,7 @@ async function getSFMessages(senderID) {
   
       if (response.ok) {
         const body = await response.json();
-        console.log("Sesión creada exitosamente, body: %s", body);
+        console.log("Interaccion de salesforce recibida, body: %s", body);
 
         body.messages.forEach(async function(message) {
             switch (message.type) {
@@ -171,7 +171,7 @@ async function getSFMessages(senderID) {
         });
       } else {
         console.log(response);
-        console.error("Failed calling createSFSession", response.status, response.statusText);
+        console.error("Failed calling getSFMessages", response.status, response.statusText);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -200,10 +200,10 @@ async function sendIGMessage(message, senderID) {
   
       if (response.ok) {
         const body = await response.json();
-        console.log("Sesión creada exitosamente, body: %s", body);
+        console.log("Mensaje enviado exitosamente, body: %s", body);
       } else {
         console.log(response);
-        console.error("Failed calling createSFSession", response.status, response.statusText);
+        console.error("Failed calling sendIGMessage", response.status, response.statusText);
       }
     } catch (error) {
       console.error("Error:", error);
