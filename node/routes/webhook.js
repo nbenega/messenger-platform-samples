@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const WebhookController = require('../controllers/WebhookController');
-const SalesforceController = require('../controllers/WebhookController');
-const { VALIDATION_TOKEN,PAGE_ACCESS_TOKEN} = require('../global/Variables');
+const SalesforceController = require('../controllers/SalesforceController');
+const { VALIDATION_TOKEN,PAGE_ACCESS_TOKEN,mappingSesion} = require('../global/Variables');
 
 
 /*
@@ -67,17 +67,18 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
         // Iterate over each messaging event
         pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
           senderID = messagingEvent.sender.id;  
-          session = WebhookController.mappingSesion[senderID];
+          session = mappingSesion[senderID];
           if (session){
-            
+              await SalesforceController.chatMessage(messagingEvent);
           } else {
             console.log("Entra al entry");
             await WebhookController.getUserName(senderID);
-            console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
+            console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
             await SalesforceController.createSFSession(senderID); 
-            console.log('mappingSesion[senderID]: %s', WebhookController.mappingSesion[senderID]);
+            console.log('mappingSesion[senderID]: %s', mappingSesion[senderID]);
             await SalesforceController.createSFVisitorSession(senderID);
             console.log("desp del name");
+            await SalesforceController.chatMessage(messagingEvent);
           }
           SalesforceController.getSFMessages(senderID);
         });

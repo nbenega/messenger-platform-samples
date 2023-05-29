@@ -2,7 +2,8 @@
 
 const bodyParser = require('body-parser');
 const express = require('express');
-const { APP_SECRET,VALIDATION_TOKEN,PAGE_ACCESS_TOKEN,SERVER_URL} = require('../global/variables');
+const crypto = require('crypto');
+const { APP_SECRET,VALIDATION_TOKEN,PAGE_ACCESS_TOKEN,SERVER_URL} = require('./global/Variables');
 
 if (!(APP_SECRET && VALIDATION_TOKEN && PAGE_ACCESS_TOKEN && SERVER_URL)) {
   console.error("Missing config values");
