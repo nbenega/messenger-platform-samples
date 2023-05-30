@@ -195,6 +195,7 @@ async function getSFMessages(senderID) {
         if(response.status == SERVER_UNAVAILABLE){
           //TODO: implementar el ReconnectSession y el ChasitorResyncState
         }
+        //session.active = false; ¿Podría inactivarse la sesión cuando haya algún error en el getMessages
       }
     } catch (error) {
       console.error("Error:", error);
