@@ -29,6 +29,7 @@ async function createSFSession(senderID) {
           session.clientPollTimeout = body.clientPollTimeout;
           session.sequence = 1;
           session.offset = -1;
+          session.active = true;
         }
       } else {
         console.error("Failed calling createSFSession", response.status, response.statusText);
@@ -163,7 +164,16 @@ async function getSFMessages(senderID) {
                 await getSFMessages(senderID);
                 break;
 
+              case 'ChatRequestSuccess':// No se vuelve a escuchar novedades para que continué con la ejecuión principal y se envíe el primer mensaje al agente
+                break;
+
+              case 'ChatRequestFail':
+                session.active = false;
+                //TODO: ver que hacer cuando falle el request porque sino cree que envía el mensaje a SF y empieza a escuchar novedades
+                break;
+
               case 'ChatEnded':
+                session.active = false;
                 break;
 
               case 'ChasitorSessionData':

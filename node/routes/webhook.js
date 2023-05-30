@@ -53,22 +53,22 @@ router.get('/authorize', function(req, res) {
  *
  */
 
-router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
+router.post('/webhook', async function (req, res) {
     var data = req.body;
   
     // Make sure this is a instagram subscription
     if (data.object == 'instagram') {
       // Iterate over each entry
       // There may be multiple if batched
-      data.entry.forEach(async function(pageEntry) { // <-- Nota el 'async' aquí
+      data.entry.forEach(async function(pageEntry) {
         var session;
         var senderID;
         // Iterate over each messaging event
-        pageEntry.messaging.forEach(async function(messagingEvent) { // <-- Nota el 'async' aquí
+        pageEntry.messaging.forEach(async function(messagingEvent) {
           senderID = messagingEvent.sender.id;  
           if(senderID != IG_ACCOUNT_ID){
             session = mappingSesion[senderID];
-            if (session){
+            if (session && session.active){
               console.log("Envía nuevo mensaje");
               await SalesforceController.chatMessage(messagingEvent);
             } else {
@@ -78,6 +78,8 @@ router.post('/webhook', async function (req, res) { // <-- Nota el 'async' aquí
               await SalesforceController.createSFSession(senderID); 
               console.log("Crea sesión de visitante");
               await SalesforceController.createSFVisitorSession(senderID);
+              console.log("Confirmo que el chat se creó correctamente en SF");
+              await SalesforceController.getSFMessages(senderID);
               console.log("Envía primer mensaje");
               await SalesforceController.chatMessage(messagingEvent);
               console.log("Empieza a escuchar novedades");
