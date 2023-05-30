@@ -1,7 +1,7 @@
 const fetch = require("node-fetch"); // Asegúrate de requerir cualquier módulo necesario
 const { PAGE_ACCESS_TOKEN,URL_CHAT,ORG_ID,DEPLOYMENT_ID,BUTTON_ID,USER_AGENT,LANGUAGE,SCREEN_RESOLUTION,CREATE_SESSION,CREATE_VISITOR_SESSION,CHAT_MESSAGE,MESSAGES,PAGE_ID,mappingSesion} = require('../global/Variables');
 const SERVER_UNAVAILABLE = 503;
-
+const OK = 200;
 
 /*
  * Create a Salesforce Chat Session. If successful, we'll 
@@ -147,30 +147,38 @@ async function getSFMessages(senderID) {
       const response = await fetch(URL_CHAT+MESSAGES, options);
   
       if (response.ok) {
-        const body = await response.json();
-        if(body.sequence){
-          session.sequence = body.sequence;
-          session.offset = body.sequence;
-        }
-        body.messages.forEach(async function(message) {
-          console.log("Message recibido: %s", message);
-          switch (message.type) {
-            case 'ChatMessage':
-              console.log("Message recibido: %s", JSON.stringify(message));
-              await sendIGMessage(message,senderID);
-              console.log("Vuelve a escuchar novedades");
-              await getSFMessages(senderID);
-              break;
-            case 'ChatEnded':
-              break;
-            case 'ChasitorSessionData':
-              //TODO: tiene que procesarse luego de un ReconnectSession request y no tiene que enviarse nada hasta que se procese este mensaje
-              break;
-            default:
-              console.log("Vuelve a escuchar novedades");
-              await getSFMessages(senderID);
+        if(response.status == OK){
+          const body = await response.json();
+          if(body.sequence){
+            session.sequence = body.sequence;
+            session.offset = body.sequence;
           }
-        });
+          body.messages.forEach(async function(message) {
+            console.log("Message recibido: %s", message);
+            switch (message.type) {
+              case 'ChatMessage':
+                console.log("Message recibido: %s", JSON.stringify(message));
+                await sendIGMessage(message,senderID);
+                console.log("Vuelve a escuchar novedades");
+                await getSFMessages(senderID);
+                break;
+
+              case 'ChatEnded':
+                break;
+
+              case 'ChasitorSessionData':
+                //TODO: tiene que procesarse luego de un ReconnectSession request y no tiene que enviarse nada hasta que se procese este mensaje
+                break;
+
+              default:
+              console.log("Vuelve a escuchar novedades");
+              await getSFMessages(senderID);
+            }
+          });
+        } else {
+          console.log("El agente no envió ningún mensaje, status code: %s. Vuelve a escuchar novedades", response.status);
+          await getSFMessages(senderID);
+        }
       } else {
         console.error("Failed calling getSFMessages", response.status, response.statusText);
         console.log(response);
