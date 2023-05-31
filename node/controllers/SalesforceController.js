@@ -56,57 +56,82 @@ async function createSFSession(senderID) {
       "language": LANGUAGE, 
       "screenResolution": SCREEN_RESOLUTION, 
       "visitorName": session.name, 
-      "prechatDetails": [{
-        "label":"Email",
-        "value":"test@test.co.in",
-        "entityMaps":[
-            {"entityName":"Contact",
-            "fieldName":"Email",
-            "isFastFillable":false,
-            "isAutoQueryable":true,
-            "isExactMatchable":true
-            }
-        ],
-        "transcriptFields":["Email__c"],
-        "displayToAgent":"true"}
-    ],  
-      "prechatEntities": [], 
-      "receiveQueueUpdates": true, 
-      "isPost": true 
-    };
-
-    /* Version final
-    "prechatDetails": [
+      "prechatDetails": [
         {
           "label": "First Name",
           "value": session.name,
+          "transcriptFields":[],
           "displayToAgent": false
         }, {
           "label": "Last Name",
           "value": session.name,
+          "transcriptFields":[],
           "displayToAgent": false
         }, {
           "label": "Email",
           "value": session.username+"@gmail.com",
+          "transcriptFields":[],
+          "displayToAgent": false
+        }, {
+          "label": "Username",
+          "value": session.username,
+          "transcriptFields":[],
+          "displayToAgent": false
+        }, {
+          "label": "SenderId",
+          "value": senderID,
+          "transcriptFields":[],
           "displayToAgent": false
         }, {
           "label": "issue",
           "value": "Contacto Instagram",
+          "transcriptFields":[],
           "displayToAgent": false
         }, {
           "label": "origen",
           "value": "Instagram",
+          "transcriptFields":[],
           "displayToAgent": false
         }
       ],  
       "prechatEntities": [
         {
+          "entityName": "SocialNetworkUser__c",
+          "showOnCreate": true,
+          "saveToTranscript": "SocialNetworkUser__c",
+          "entityFieldsMaps": [
+            {
+              "isExactMatch": true,
+              "fieldName": "Username__c",
+              "doCreate": true,
+              "doFind": true,
+              "label": "Username"
+            },
+            {
+              "isExactMatch": true,
+              "fieldName": "SocialNetwork__c",
+              "doCreate": true,
+              "doFind": true,
+              "label": "origen"
+            },
+            {
+              "isExactMatch": true,
+              "fieldName": "UserId__c",
+              "doCreate": true,
+              "doFind": true,
+              "label": "SenderId"
+            }
+          ]
+        },
+        {
           "entityName": "Contact",
           "showOnCreate": true,
           "linkToEntityName": "Case",
           "linkToEntityField": "ContactId",
+          "linkToEntityName": "SocialNetworkUser__c",
+          "linkToEntityField": "ContactId__c",
           "saveToTranscript": "ContactId",
-          "entityFieldMaps": [
+          "entityFieldsMaps": [
             {
               "isExactMatch": true,
               "fieldName": "FirstName",
@@ -134,7 +159,7 @@ async function createSFSession(senderID) {
           "entityName": "Case",
           "showOnCreate": true,
           "saveToTranscript": "CaseId",
-          "entityFieldMaps": [
+          "entityFieldsMaps": [
             {
               "isExactMatch": false,
               "fieldName": "Subject",
@@ -151,8 +176,11 @@ async function createSFSession(senderID) {
             }
           ]
         }
-      ]*/
-    console.log(data);
+      ],
+      "receiveQueueUpdates": true, 
+      "isPost": true 
+    };
+
     try {
       const response = await fetch(URL_CHAT+CREATE_VISITOR_SESSION, {
         method: 'POST',
