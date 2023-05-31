@@ -11,10 +11,12 @@ async function getUserName(senderID) {
       let response = await fetch(`https://graph.facebook.com/v16.0/${senderID}?fields=name,username&access_token=${PAGE_ACCESS_TOKEN}`);
       if (response.ok) {
         let body = await response.json();
-        let name = body.name;
-        if (name) {
+        if (body) {
           var session = {};
-          session.name = name;
+          session.name = body.name;
+          session.firstName = body.first_name;
+          session.lastName = body.last_name;
+          session.username = body.username;
           mappingSesion[senderID] = session;
         }
       } else {

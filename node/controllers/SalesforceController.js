@@ -56,12 +56,103 @@ async function createSFSession(senderID) {
       "language": LANGUAGE, 
       "screenResolution": SCREEN_RESOLUTION, 
       "visitorName": session.name, 
-      "prechatDetails": [],  
+      "prechatDetails": [{
+        "label":"Email",
+        "value":"test@test.co.in",
+        "entityMaps":[
+            {"entityName":"Contact",
+            "fieldName":"Email",
+            "isFastFillable":false,
+            "isAutoQueryable":true,
+            "isExactMatchable":true
+            }
+        ],
+        "transcriptFields":["Email__c"],
+        "displayToAgent":"true"}
+    ],  
       "prechatEntities": [], 
       "receiveQueueUpdates": true, 
       "isPost": true 
     };
-  
+
+    /* Version final
+    "prechatDetails": [
+        {
+          "label": "First Name",
+          "value": session.name,
+          "displayToAgent": false
+        }, {
+          "label": "Last Name",
+          "value": session.name,
+          "displayToAgent": false
+        }, {
+          "label": "Email",
+          "value": session.username+"@gmail.com",
+          "displayToAgent": false
+        }, {
+          "label": "issue",
+          "value": "Contacto Instagram",
+          "displayToAgent": false
+        }, {
+          "label": "origen",
+          "value": "Instagram",
+          "displayToAgent": false
+        }
+      ],  
+      "prechatEntities": [
+        {
+          "entityName": "Contact",
+          "showOnCreate": true,
+          "linkToEntityName": "Case",
+          "linkToEntityField": "ContactId",
+          "saveToTranscript": "ContactId",
+          "entityFieldMaps": [
+            {
+              "isExactMatch": true,
+              "fieldName": "FirstName",
+              "doCreate": true,
+              "doFind": true,
+              "label": "First Name"
+            },
+            {
+              "isExactMatch": true,
+              "fieldName": "LastName",
+              "doCreate": true,
+              "doFind": true,
+              "label": "Last Name"
+            },
+            {
+              "isExactMatch": true,
+              "fieldName": "Email",
+              "doCreate": true,
+              "doFind": true,
+              "label": "Email"
+            }
+          ]
+        },
+        {
+          "entityName": "Case",
+          "showOnCreate": true,
+          "saveToTranscript": "CaseId",
+          "entityFieldMaps": [
+            {
+              "isExactMatch": false,
+              "fieldName": "Subject",
+              "doCreate": true,
+              "doFind": false,
+              "label": "issue"
+            },
+            {
+              "isExactMatch": false,
+              "fieldName": "Origin",
+              "doCreate": true,
+              "doFind": false,
+              "label": "origin"
+            }
+          ]
+        }
+      ]*/
+    console.log(data);
     try {
       const response = await fetch(URL_CHAT+CREATE_VISITOR_SESSION, {
         method: 'POST',
